@@ -1,12 +1,12 @@
 {
   "runtimeTarget": {
-    "name": ".NETCoreApp,Version=v8.0/linux-x64",
+    "name": ".NETCoreApp,Version=v8.0/linux-arm64",
     "signature": ""
   },
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v8.0": {},
-    ".NETCoreApp,Version=v8.0/linux-x64": {
+    ".NETCoreApp,Version=v8.0/linux-arm64": {
       "automation/1.0.0": {
         "dependencies": {
           "Appium.WebDriver": "8.3.0",
@@ -20,13 +20,13 @@
           "Serilog.Sinks.File": "7.0.0",
           "System.Management": "10.0.10",
           "coverlet.collector": "6.0.0",
-          "runtimepack.Microsoft.NETCore.App.Runtime.linux-x64": "8.0.31"
+          "runtimepack.Microsoft.NETCore.App.Runtime.linux-arm64": "8.0.31"
         },
         "runtime": {
           "automation.dll": {}
         }
       },
-      "runtimepack.Microsoft.NETCore.App.Runtime.linux-x64/8.0.31": {
+      "runtimepack.Microsoft.NETCore.App.Runtime.linux-arm64/8.0.31": {
         "runtime": {
           "Microsoft.CSharp.dll": {
             "assemblyVersion": "8.0.0.0",
@@ -1164,7 +1164,7 @@
       "serviceable": false,
       "sha512": ""
     },
-    "runtimepack.Microsoft.NETCore.App.Runtime.linux-x64/8.0.31": {
+    "runtimepack.Microsoft.NETCore.App.Runtime.linux-arm64/8.0.31": {
       "type": "runtimepack",
       "serviceable": false,
       "sha512": ""
@@ -1332,46 +1332,38 @@
     }
   },
   "runtimes": {
-    "android-x64": [
+    "android-arm64": [
       "android",
-      "linux-bionic-x64",
+      "linux-bionic-arm64",
       "linux-bionic",
-      "linux-x64",
+      "linux-arm64",
       "linux",
-      "unix-x64",
+      "unix-arm64",
       "unix",
       "any",
       "base"
     ],
-    "linux-bionic-x64": [
-      "linux-bionic",
-      "linux-x64",
+    "linux-arm64": [
       "linux",
-      "unix-x64",
+      "unix-arm64",
       "unix",
       "any",
       "base"
     ],
-    "linux-musl-x64": [
+    "linux-bionic-arm64": [
+      "linux-bionic",
+      "linux-arm64",
+      "linux",
+      "unix-arm64",
+      "unix",
+      "any",
+      "base"
+    ],
+    "linux-musl-arm64": [
       "linux-musl",
-      "linux-x64",
+      "linux-arm64",
       "linux",
-      "unix-x64",
-      "unix",
-      "any",
-      "base"
-    ],
-    "linux-x64": [
-      "linux",
-      "unix-x64",
-      "unix",
-      "any",
-      "base"
-    ],
-    "ubuntu.24.04-x64": [
-      "linux-x64",
-      "linux",
-      "unix-x64",
+      "unix-arm64",
       "unix",
       "any",
       "base"
