@@ -23,11 +23,60 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 line() { printf '============================================\n'; }
 
 # ------------------------------------------------------------------------------
-# Make the bundled Linux adb executable. Git and some unzip tools drop the
-# execute bit, which would make every adb call fail with "permission denied".
+# adb. Windows and x86-64 Linux builds bundle their own platform-tools and use
+# it, which is what keeps every operator box on one known adb version. An aarch64
+# build bundles none, because Google publishes no arm64 Linux platform-tools - so
+# on a Raspberry Pi the distro's adb is installed and used instead.
+#
+# The bundle is chmod'ed first: git and some unzip tools drop the execute bit,
+# which would make every adb call fail with "permission denied". The whole folder
+# is covered, not just adb - fastboot and the rest are binaries too, and adb
+# loads lib64/libc++.so from beside itself.
+#
+# Then it is run. "adb version" neither starts a server nor touches a device, and
+# running it is the only test that catches all three ways a bundle goes wrong at
+# once: wrong architecture, missing shared library, lost execute bit.
 # ------------------------------------------------------------------------------
-if [ -f "$SCRIPT_DIR/platform-tools/adb" ]; then
-    chmod +x "$SCRIPT_DIR/platform-tools/adb" || true
+line
+echo "Checking adb..."
+line
+BUNDLED_ADB="$SCRIPT_DIR/platform-tools/adb"
+USE_BUNDLED_ADB=0
+
+if [ -f "$BUNDLED_ADB" ]; then
+    chmod -R u+rwX,go+rX "$SCRIPT_DIR/platform-tools" || true
+    chmod +x "$BUNDLED_ADB" || true
+    if "$BUNDLED_ADB" version >/dev/null 2>&1; then
+        USE_BUNDLED_ADB=1
+        echo "Using the bundled adb ($("$BUNDLED_ADB" version | head -1))."
+    else
+        echo "The bundled adb will not run on this machine ($(uname -m))."
+        echo "Falling back to the adb installed on the system."
+    fi
+else
+    echo "This build bundles no adb ($(uname -m)); a system adb is required."
+fi
+
+if [ "$USE_BUNDLED_ADB" -eq 0 ]; then
+    if command -v adb >/dev/null 2>&1; then
+        echo "adb is already installed ($(adb version | head -1)). Skipping."
+    else
+        echo "adb not found. Attempting to install..."
+        if   command -v apt-get >/dev/null 2>&1; then sudo apt-get update && sudo apt-get install -y android-tools-adb
+        elif command -v dnf     >/dev/null 2>&1; then sudo dnf install -y android-tools
+        elif command -v pacman  >/dev/null 2>&1; then sudo pacman -Sy --noconfirm android-tools
+        elif command -v zypper  >/dev/null 2>&1; then sudo zypper install -y android-tools
+        else
+            line
+            echo "ERROR: no supported package manager found (apt/dnf/pacman/zypper)."
+            echo "Install adb by hand (it is the 'android-tools-adb' or 'android-tools'"
+            echo "package on most distros) then re-run."
+            line
+            exit 1
+        fi
+        command -v adb >/dev/null 2>&1 || { echo "ERROR: adb install did not succeed."; exit 1; }
+        echo "adb installed ($(adb version | head -1))."
+    fi
 fi
 
 # ------------------------------------------------------------------------------
@@ -96,25 +145,44 @@ echo "Setting ANDROID_HOME..."
 line
 PROFILE="${HOME}/.profile"
 MARKER="# added by automation setup.sh"
-if ! grep -qF "$MARKER" "$PROFILE" 2>/dev/null; then
-    {
-        echo ""
-        echo "$MARKER"
-        echo "export ANDROID_HOME=\"$SCRIPT_DIR\""
-        echo "export ANDROID_SDK_ROOT=\"$SCRIPT_DIR\""
-    } >> "$PROFILE"
-    echo "ANDROID_HOME written to $PROFILE"
+
+# ANDROID_HOME names an SDK root - the folder *containing* platform-tools - so it
+# can only be set when there is a bundled platform-tools to point at. With a
+# system adb there is no SDK tree, and pointing ANDROID_HOME at this folder would
+# send Appium looking for platform-tools/adb here and finding nothing. Unset, it
+# falls through to PATH, where the installed adb already is.
+if [ "$USE_BUNDLED_ADB" -eq 1 ]; then
+    if ! grep -qF "$MARKER" "$PROFILE" 2>/dev/null; then
+        {
+            echo ""
+            echo "$MARKER"
+            echo "export ANDROID_HOME=\"$SCRIPT_DIR\""
+            echo "export ANDROID_SDK_ROOT=\"$SCRIPT_DIR\""
+        } >> "$PROFILE"
+        echo "ANDROID_HOME written to $PROFILE"
+    else
+        echo "ANDROID_HOME already present in $PROFILE. Skipping."
+    fi
+    export ANDROID_HOME="$SCRIPT_DIR"
+    export ANDROID_SDK_ROOT="$SCRIPT_DIR"
+    echo "ANDROID_HOME set to:"
+    echo "  $SCRIPT_DIR"
 else
-    echo "ANDROID_HOME already present in $PROFILE. Skipping."
+    echo "adb comes from the system here, not from this folder, so there is no"
+    echo "SDK root to point ANDROID_HOME at. Leaving it unset - Appium and the"
+    echo "automation both fall back to the adb on PATH:"
+    echo "  $(command -v adb)"
+    if grep -qF "$MARKER" "$PROFILE" 2>/dev/null; then
+        echo
+        echo "NOTE: $PROFILE still exports ANDROID_HOME from an earlier run of this"
+        echo "script. Remove the block marked '$MARKER' or it will point Appium at"
+        echo "a platform-tools folder that does not exist here."
+    fi
 fi
-export ANDROID_HOME="$SCRIPT_DIR"
-export ANDROID_SDK_ROOT="$SCRIPT_DIR"
-echo "ANDROID_HOME set to:"
-echo "  $SCRIPT_DIR"
 
 echo
 line
-echo "COMPLETED: Node.js, Appium and UiAutomator2 are ready."
+echo "COMPLETED: adb, Node.js, Appium and UiAutomator2 are ready."
 echo
 echo "Open a new terminal (or run 'source ~/.profile') so ANDROID_HOME"
 echo "takes effect in your shell."
